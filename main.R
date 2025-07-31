@@ -28,11 +28,12 @@ library(dlnm)
 library(splines)
 library(tsModel)
 library(gnm)
+library(tidyverse)
 
 ## SELECT POLLUTANT OF INTEREST
 pollutant_col_name <- "PM2.5"
 outcome_col_name <- "hf_prim"
-lag_number <- 4
+lag_number <- 7
 
 # ============================
 
@@ -363,12 +364,27 @@ plot(cpred_pooled_pollutant, "slices",
 dev.off()
 
 # Cumulative curve
-png(file.path(results_dir, paste0("plot_cumulative_lag_response", pollutant_col_name, "-", outcome_col_name, ".png")))
+png(
+  file.path(
+    results_dir,
+    paste0(
+      "plot_cumulative_lag_response",
+      pollutant_col_name, "-", outcome_col_name,
+      ".png"
+    )
+  )
+)
 plot(cpred_pooled_pollutant, "slices",
   var = 10, cumul = TRUE, ylab = "Cumulative RR and 95% CI",
-  main = paste(outcome_col_name, "\nCumulative association with a 10-unit increase in", pollutant_col_name)
+  main = paste(
+    outcome_col_name,
+    "\nCumulative association with a 10-unit increase in",
+    pollutant_col_name
+  )
 )
 dev.off()
+
+plot(cpred_pooled_pollutant, "slices", var = 10)
 
 # create another crosspred obj that have prediction across pollutant ranges
 cpred_pooled_pollutant_range <- crosspred(cb_pred_basis_pollutant,
@@ -766,20 +782,33 @@ cat("\nAll specified results have been saved.\n")
 # 11. Plotting Boxplot for lag0, lag1, lag2, lag3, lag0-1, lag 0-2, lag0-3
 
 RR_pooled_lag_filter <- lagged_RR_pooled_pollutant_df %>%
-  filter(Lag <= 4) %>%
+  filter(Lag <= 3) %>%
   mutate(
     Effect_Type = "Individual",
     X_label = paste("lag", Lag, sep = "")
   )
 
 RR_pooled_cum_filter <- pooled_cumulative_RR_df %>%
-  filter(Lag <= 3) %>%
+  filter(between(Lag, 1, 3)) %>%
   mutate(
     Effect_Type = "Cumulative Lag",
     X_label = paste("lag0-", Lag, sep = "")
   )
 
 RR_pooled_plot_df <- rbind(RR_pooled_lag_filter, RR_pooled_cum_filter)
+print(RR_pooled_plot_df)
+
+# Restructure the RR_pooled_plot_df for reporting
+RR_pooled_df <- RR_pooled_plot_df %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "X_label") %>%
+  mutate_if(is.numeric, round, 5) %>%
+  mutate("95% CI" = paste(Lower, "-", Upper, sep = " ")) %>%
+  select(RR, "95% CI")
+write.csv(RR_pooled_df, file.path(results_dir, "RR_pooled_df.csv"), row.names = TRUE)
+
+xtable(RR_pooled_df, digits = 2, align = "l|cc") %>%
+  print(file = file.path(results_dir, "RR_pooled_df.tex"), include.rownames = TRUE)
 
 # Select only relevant cols
 label_order <- c("lag0", "lag1", "lag2", "lag3", "lag0-1", "lag0-2", "lag0-3")
@@ -792,17 +821,62 @@ ggplot(RR_pooled_lag_filter, aes(x = X_label, y = RR)) +
   geom_point(size = 3, aes(color = "RR")) + # Plots the central RR points
   geom_errorbar(aes(ymin = Lower, ymax = Upper, color = "95% Confidence Interval"), width = 0.2) + # Adds the upper and lower bounds as error bars
   geom_line(aes(y = RR, color = "RR"), linetype = "dashed") +
-  geom_hline(yintercept = 1, color = "black", linetype = "dotted", linewidth = 0.4, alpha = 0.4) +
-  # annotate(geom = "text", x = 1, y = 0.9995, label = "RR = 1", color = "black", size = 4) +
+  geom_hline(yintercept = 1, color = "red", linetype = "dotted", linewidth = 1, alpha = 0.4) +
+  annotate(geom = "text", x = 1, y = 0.9995, label = "RR = 1", color = "black", size = 4) +
   scale_color_manual(values = c("RR" = "blue", "95% Confidence Interval" = "black")) +
   labs(
-    title = "Relative Risk by Lag Day",
     x = "Lag",
     y = "Relative Risk (RR)",
     color = "Legend"
   ) +
-  theme_minimal()
+  ggtitle(
+    "Relative Risk by Lag Day",
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+ggsave(
+  file.path(
+    results_dir,
+    paste0("RR_lag_day", pollutant_col_name, ".png")
+  ),
+  width = 8,
+  height = 8,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
 
+# Plot the RR with lag and lag_cumu in X
+ggplot(RR_pooled_cum_filter, aes(x = X_label, y = RR)) +
+  geom_point(size = 3, aes(color = "RR")) + # Plots the central RR points
+  geom_errorbar(aes(ymin = Lower, ymax = Upper, color = "95% Confidence Interval"), width = 0.2) + # Adds the upper and lower bounds as error bars
+  geom_line(aes(y = RR, color = "RR"), linetype = "dashed") +
+  geom_hline(yintercept = 1, color = "red", linetype = "dotted", linewidth = 1, alpha = 0.4) +
+  annotate(geom = "text", x = 1, y = 0.9995, label = "RR = 1", color = "black", size = 4) +
+  scale_color_manual(values = c("RR" = "blue", "95% Confidence Interval" = "black")) +
+  labs(
+    title = "Relative Risk by Cumulative Lag",
+    x = "Cumulative Lag",
+    y = "Relative Risk (RR)",
+    color = "Legend"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+ggsave(
+  file.path(
+    results_dir,
+    paste0("RR_cumu_lag", pollutant_col_name, ".png")
+  ),
+  width = 8,
+  height = 8,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
 # Plot pooled estimate together with province-specific estimate
 
 #################################################

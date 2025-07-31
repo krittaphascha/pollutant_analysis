@@ -1,1 +1,7 @@
 data
+.RData
+.Rhistory
+.DS_Store
+renv
+.venv
+dump
