@@ -1,8 +1,0 @@
-        O3 PM2.5 PM10  NO2  NOX   CO SO2
-O3    1.00    NA   NA   NA   NA   NA  NA
-PM2.5 0.61  1.00   NA   NA   NA   NA  NA
-PM10  0.56  0.93 1.00   NA   NA   NA  NA
-NO2   0.27  0.56 0.60 1.00   NA   NA  NA
-NOX   0.13  0.46 0.51 0.95 1.00   NA  NA
-CO    0.23  0.42 0.38 0.41 0.39 1.00  NA
-SO2   0.13  0.24 0.23 0.34 0.34 0.36   1
