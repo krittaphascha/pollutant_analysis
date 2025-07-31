@@ -1,0 +1,30 @@
+Call:  mvmeta(formula = ymat_pollutant_dropna ~ 1, S = list_vcov_pollutant_dropna, 
+    method = "reml")
+
+Multivariate random-effects meta-analysis
+Dimension: 3
+Estimation method: REML
+
+Fixed-effects coefficients
+      Estimate  Std. Error        z  Pr(>|z|)  95%ci.lb  95%ci.ub     
+spl1   -0.0009      0.0003  -3.5029    0.0005   -0.0014   -0.0004  ***
+spl2    0.0011      0.0002   6.6815    0.0000    0.0008    0.0014  ***
+spl3   -0.0002      0.0001  -1.5634    0.1180   -0.0005    0.0001     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Between-study random-effects (co)variance components
+Structure: General positive-definite
+      Std. Dev     Corr         
+spl1    0.0008     spl1     spl2
+spl2    0.0008  -0.7251         
+spl3    0.0005   0.9944  -0.7939
+
+Multivariate Cochran Q-test for heterogeneity:
+Q = 301.2571 (df = 156), p-value = 0.0000
+I-square statistic = 48.2%
+
+53 studies, 159 observations, 3 fixed and 6 random-effects parameters
+    logLik         AIC         BIC  
+  793.1128  -1568.2255  -1540.7768  
+
