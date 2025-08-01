@@ -3,6 +3,25 @@ setwd("~/Projects/hf_pm_analysis")
 
 dat <- read.csv("data/daily_all_weather_30jul.csv")
 
+# Load necessary packages
+
+library(dplyr)
+library(tibble)
+library(dlnm)
+library(splines)
+library(tsModel)
+library(gnm)
+library(tidyverse)
+library(xtable)
+
+## SELECT POLLUTANT OF INTEREST
+pollutant_col_name <- "PM2.5"
+outcome_col_name <- "hf_prim"
+
+lag_number <- 7
+output_dir <- "30jul"
+
+# ===========================
 # properly format date
 dat$date_start <- as.Date(dat$date_start, "%Y-%m-%d")
 dat$dow <- as.factor(weekdays(dat$date_start))
@@ -22,25 +41,18 @@ datalist <- lapply(
 names(datalist) <- prov_name
 
 # ============================
-# Load necessary packages
-library(dplyr)
-library(tibble)
-library(dlnm)
-library(splines)
-library(tsModel)
-library(gnm)
-library(tidyverse)
-
-## SELECT POLLUTANT OF INTEREST
-pollutant_col_name <- "PM2.5"
-outcome_col_name <- "hf_prim"
-lag_number <- 7
-output_dir <- "30jul"
-
-# ============================
 
 results_dir <- paste0("output/", output_dir, "/results_", pollutant_col_name, "-", outcome_col_name, "-", lag_number, "lag")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE) # recursive = TRUE if pollutant_col_name could contain slashes (e.g. "PM2.5/O3")
+
+# For proper name format in the plot
+
+if (outcome_col_name == "hf_prim") {
+  outcome_plot_name <- "Heart Failure Hospitalization"
+} else {
+  outcome_plot_name <- outcome_col_name
+}
+
 
 cat("\nSaving results to directory:", file.path(getwd(), results_dir), "\n")
 
@@ -358,10 +370,26 @@ summary(cpred_pooled_pollutant)
 with(cpred_pooled_pollutant, cbind(allRRfit, allRRlow, allRRhigh))
 
 ## Plot to RR association-lag curve
-png(file.path(results_dir, paste0("plot_lag_response", pollutant_col_name, "-", outcome_col_name, ".png")))
+png(
+  file.path(results_dir, paste0("plot_lag_response", pollutant_col_name, "-", outcome_col_name, ".png")),
+  width = 10,
+  height = 6,
+  units = "in",
+  res = 300
+)
 plot(cpred_pooled_pollutant, "slices",
   var = 10, ylab = "RR and 95% CI", ci.arg = list(density = 15, lwd = 2),
-  main = paste(outcome_col_name, "\nAssociation with a 10-unit increase in", pollutant_col_name)
+  main = paste(outcome_plot_name, "\nAssociation with a 10-unit increase in", pollutant_col_name)
+)
+dev.off()
+svg(
+  file.path(results_dir, paste0("plot_lag_response", pollutant_col_name, "-", outcome_col_name, ".svg")),
+  width = 10,
+  height = 6,
+)
+plot(cpred_pooled_pollutant, "slices",
+  var = 10, ylab = "RR and 95% CI", ci.arg = list(density = 15, lwd = 2),
+  main = paste(outcome_plot_name, "\nAssociation with a 10-unit increase in", pollutant_col_name)
 )
 dev.off()
 
@@ -374,19 +402,43 @@ png(
       pollutant_col_name, "-", outcome_col_name,
       ".png"
     )
-  )
+  ),
+  width = 10,
+  height = 6,
+  units = "in",
+  res = 300
 )
 plot(cpred_pooled_pollutant, "slices",
   var = 10, cumul = TRUE, ylab = "Cumulative RR and 95% CI",
   main = paste(
-    outcome_col_name,
+    outcome_plot_name,
+    "\nCumulative association with a 10-unit increase in",
+    pollutant_col_name
+  )
+)
+dev.off()
+svg(
+  file.path(
+    results_dir,
+    paste0(
+      "plot_cumulative_lag_response",
+      pollutant_col_name, "-", outcome_col_name,
+      ".svg"
+    )
+  ),
+  width = 10,
+  height = 6,
+)
+plot(cpred_pooled_pollutant, "slices",
+  var = 10, cumul = TRUE, ylab = "Cumulative RR and 95% CI",
+  main = paste(
+    outcome_plot_name,
     "\nCumulative association with a 10-unit increase in",
     pollutant_col_name
   )
 )
 dev.off()
 
-plot(cpred_pooled_pollutant, "slices", var = 10)
 
 # create another crosspred obj that have prediction across pollutant ranges
 cpred_pooled_pollutant_range <- crosspred(cb_pred_basis_pollutant,
@@ -399,10 +451,28 @@ cpred_pooled_pollutant_range <- crosspred(cb_pred_basis_pollutant,
   cumul = TRUE
 )
 
-png(file.path(results_dir, paste0("plot_range_association", pollutant_col_name, "-", outcome_col_name, ".png")))
+png(
+  file.path(results_dir, paste0("plot_range_association", pollutant_col_name, "-", outcome_col_name, ".png")),
+  width = 10,
+  height = 6,
+  units = "in",
+  res = 300
+)
 plot(cpred_pooled_pollutant_range, "overall",
   lag = 0, ylab = "RR and 95% CI",
-  main = paste(outcome_col_name, "\nAssociation with", pollutant_col_name, "across its range")
+  main = paste(outcome_plot_name, "\nAssociation with", pollutant_col_name, "across its range"),
+  xlab = paste(pollutant_col_name, "concentration ((μg/m³))"),
+)
+dev.off()
+svg(
+  file.path(results_dir, paste0("plot_range_association", pollutant_col_name, "-", outcome_col_name, ".svg")),
+  width = 10,
+  height = 6,
+)
+plot(cpred_pooled_pollutant_range, "overall",
+  lag = 0, ylab = "RR and 95% CI",
+  main = paste(outcome_plot_name, "\nAssociation with", pollutant_col_name, "across its range"),
+  xlab = paste(pollutant_col_name, "concentration ((μg/m³))"),
 )
 dev.off()
 
@@ -683,7 +753,7 @@ RR_pooled_lag_filter <- lagged_RR_pooled_pollutant_df %>%
   )
 
 RR_pooled_cum_filter <- pooled_cumulative_RR_df %>%
-  filter(between(Lag, 1, 3)) %>%
+  filter(between(Lag, 0, 3)) %>%
   mutate(
     Effect_Type = "Cumulative Lag",
     X_label = paste("lag0-", Lag, sep = "")
@@ -723,17 +793,30 @@ ggplot(RR_pooled_lag_filter, aes(x = X_label, y = RR)) +
     y = "Relative Risk (RR)",
     color = "Legend"
   ) +
-  ggtitle(
-    "Relative Risk by Lag Day",
+  labs(
+    subtitle = outcome_plot_name,
+    title = paste("Relative Risk by Lag Day for", pollutant_col_name),
   ) +
   theme(
-    plot.title = element_text(hjust = 0.5),
+    plot.title = element_text(hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
     legend.position = "none"
   )
 ggsave(
   file.path(
     results_dir,
     paste0("RR_lag_day", pollutant_col_name, ".png")
+  ),
+  width = 8,
+  height = 8,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
+ggsave(
+  file.path(
+    results_dir,
+    paste0("RR_lag_day", pollutant_col_name, ".svg")
   ),
   width = 8,
   height = 8,
@@ -751,13 +834,15 @@ ggplot(RR_pooled_cum_filter, aes(x = X_label, y = RR)) +
   annotate(geom = "text", x = 1, y = 0.9995, label = "RR = 1", color = "black", size = 4) +
   scale_color_manual(values = c("RR" = "blue", "95% Confidence Interval" = "black")) +
   labs(
-    title = "Cumulative Relative Risk by Lag",
+    title = paste("Cumulative Relative Risk by Lag for", pollutant_col_name),
+    subtitle = outcome_plot_name,
     x = "Lag",
     y = "Cumulative Relative Risk (RR)",
     color = "Legend"
   ) +
   theme(
-    plot.title = element_text(hjust = 0.5),
+    plot.title = element_text(hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
     legend.position = "none"
   )
 ggsave(
@@ -771,7 +856,67 @@ ggsave(
   dpi = 300,
   bg = "white"
 )
+ggsave(
+  file.path(
+    results_dir,
+    paste0("RR_cumu_lag", pollutant_col_name, ".svg")
+  ),
+  width = 8,
+  height = 8,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
 
+rr_cum_line_plot <- RR_pooled_cum_filter %>%
+  mutate(across(
+    c("RR", "Lower", "Upper"),
+    as.numeric
+  )) %>%
+  mutate(
+    row_number = row_number()
+  ) %>%
+  ggplot(aes(x = row_number, y = RR, ymin = Lower, ymax = Upper)) +
+  geom_ribbon(fill = "grey80", alpha = 0.5) +
+  geom_line(color = "blue", linewidth = 0.8) +
+  scale_x_continuous(
+    breaks = seq(1, nrow(RR_pooled_cum_filter), by = 1),
+    labels = c("Lag0", "Lag0-1", "Lag0-2", "Lag0-3")
+  ) +
+  labs(
+    subtitle = outcome_plot_name,
+    title = "Cumulative association with a 10-unit increase in PM2.5",
+    x = "Lag",
+    y = "Cumulative RR and 95% CI"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11)
+  )
+ggsave(
+  file.path(
+    results_dir,
+    paste0("RR_cumu_lag_line_", pollutant_col_name, ".png") # Added _new to avoid overwriting
+  ),
+  width = 8,
+  height = 8,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
+ggsave(
+  file.path(
+    results_dir,
+    paste0("RR_cumu_lag_line_", pollutant_col_name, ".svg") # Added _new to avoid overwriting
+  ),
+  width = 8,
+  height = 8,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
 # Plot province specific relative risk of incrase in 10 PM2.5 values as a forest plot
 
 forest_plot_df <- as.data.frame(RR_prov_lag0_pollutant) %>%
@@ -816,6 +961,7 @@ forest_plot_province <- forest_plot_df %>%
   geom_vline(xintercept = 1, linetype = "dashed", color = "black", linewidth = 0.5, alpha = 0.6) +
   scale_x_continuous(breaks = scales::breaks_pretty(n = 5)) +
   labs(
+    subtitle = outcome_plot_name,
     title = paste(
       "Relative Risk per 10 μg/m³ increase of",
       pollutant_col_name,
@@ -827,10 +973,20 @@ forest_plot_province <- forest_plot_df %>%
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
     legend.position = "none"
   )
 ggsave(
   file.path(results_dir, paste0("forest_plot_province_", pollutant_col_name, ".png")),
+  plot = forest_plot_province,
+  width = 8,
+  height = 12,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
+ggsave(
+  file.path(results_dir, paste0("forest_plot_province_", pollutant_col_name, ".svg")),
   plot = forest_plot_province,
   width = 8,
   height = 12,
