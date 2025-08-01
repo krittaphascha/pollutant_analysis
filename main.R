@@ -24,6 +24,7 @@ names(datalist) <- prov_name
 # ============================
 # Load necessary packages
 library(dplyr)
+library(tibble)
 library(dlnm)
 library(splines)
 library(tsModel)
@@ -34,10 +35,11 @@ library(tidyverse)
 pollutant_col_name <- "PM2.5"
 outcome_col_name <- "hf_prim"
 lag_number <- 7
+output_dir <- "30jul"
 
 # ============================
 
-results_dir <- paste0("output_30jul//results_", pollutant_col_name, "-", outcome_col_name, "-", lag_number, "lag")
+results_dir <- paste0("output/", output_dir, "/results_", pollutant_col_name, "-", outcome_col_name, "-", lag_number, "lag")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE) # recursive = TRUE if pollutant_col_name could contain slashes (e.g. "PM2.5/O3")
 
 cat("\nSaving results to directory:", file.path(getwd(), results_dir), "\n")
@@ -517,115 +519,7 @@ system.time(
 ## SAVE RESULTS TO FILES FOR LATER COMPARISON ##
 ##################################################
 
-library(xtable)
-library(ggplot2)
-library(reshape2)
-
-# 1. Table 1
-# Select the numeric columns you want to summarize
-cols_to_summarize <- c(
-  "O3", "PM2.5", "PM10", "NO2", "NOX", "CO", "SO2",
-  "hf_prim", "humidity", "temperature", "pressure"
-)
-
-# Apply the summary function to each column and transpose the result
-tab1 <- t(apply(dat[, cols_to_summarize], 2, function(x) {
-  c(
-    mean(x, na.rm = TRUE),
-    sd(x, na.rm = TRUE),
-    min(x, na.rm = TRUE),
-    quantile(x, c(0.25, 0.50, 0.75), na.rm = TRUE),
-    max(x, na.rm = TRUE)
-  )
-}))
-
-# Assign column and row names
-dimnames(tab1) <- list(
-  c(
-    "Ozone (O3)", "Fine Particulate Matter (PM2.5)", "Particulate Matter (PM10)",
-    "Nitrogen Dioxide (NO2)", "Nitrogen Oxides (NOX)", "Carbon Monoxide (CO)",
-    "Sulfur Dioxide (SO2)", "HF Hospitalization", "Humidity (%)",
-    "Temperature (Celsius)", "Air Pressure (hPa)"
-  ),
-  c("Mean", "SD", "Min", "25%", "Median", "75%", "Max")
-)
-
-# Print the resulting table
-capture.output(
-  {
-    print(tab1, digits = 2)
-    print(xtable(tab1, digits = 1, align = "l|rrrrrrr"))
-  },
-  file = file.path(results_dir, "table1_summary_statistics.txt")
-)
-
-
-# 2. Spearman correlation matrix between each pollutant and HF hospitalization
-correlation_matrix <- cor(dat[, c("O3", "PM2.5", "PM10", "NO2", "NOX", "CO", "SO2")],
-  use = "pairwise.complete.obs", method = "spearman"
-)
-correlation_matrix[upper.tri(correlation_matrix)] <- NA # Set upper triangle to NA for better visualization
-# Print the correlation matrix
-capture.output(
-  {
-    print(correlation_matrix, digits = 2)
-  },
-  file = file.path(results_dir, "spearman_correlation_matrix.txt")
-)
-
-# create heatmap correlation matrix
-melted_correlation_matrix <- melt(correlation_matrix)
-ggplot(
-  data = melted_correlation_matrix,
-  aes(x = Var1, y = Var2, fill = value)
-) +
-  geom_tile() +
-  scale_fill_distiller() +
-  geom_text(aes(Var1, Var2, label = round(value, 2)),
-    color = "black", size = 4
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1)
-  ) +
-  ggtitle("Spearman Correlation Matrix") +
-  theme(plot.title = element_text(hjust = 0.7))
-ggsave(file.path(results_dir, "correlation_matrix_heatmap.png"), width = 8, height = 6, dpi = 300)
-
-
-# Plot Heatmap to show Pollutant distribution value in each province
-monthly_pol <- dat %>%
-  group_by(prov_name, month) %>%
-  summarise(across(c("O3", "PM2.5", "PM10", "NO2", "NOX", "CO", "SO2"), mean, na.rm = TRUE), .groups = "drop") %>%
-  mutate(month = factor(month, levels = month.name))
-
-ggplot(monthly_pol, aes(x = month, y = prov_name, fill = PM2.5)) +
-  geom_tile(color = "white") + # geom_tile is the function for heatmaps
-  scale_fill_viridis_c(name = "Monthly Avg. PM2.5 (μg/m³)") +
-  scale_y_discrete(limits = rev) +
-  scale_x_discrete(position = "bottom") +
-  labs(
-    title = "Monthly PM2.5 Concentration by Province",
-    x = "Month",
-    y = "Province"
-  ) +
-  theme_minimal() + # A clean theme
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 1.1, vjust = 0.95), # Angle the month text
-    panel.grid = element_blank() # Remove grid lines
-  )
-ggsave(
-  file.path(
-    results_dir,
-    paste0("heatmap_monthly_avg_", pollutant_col_name, ".png")
-  ),
-  width = 8,
-  height = 12,
-  units = "in",
-  dpi = 300
-)
-
-# 3. Save Q-AIC values for each province
+# Save Q-AIC values for each province
 if (exists("qaic")) {
   qaic_df <- as.data.frame(qaic)
   qaic_df <- cbind(Province = rownames(qaic_df), qaic_df)
@@ -633,24 +527,24 @@ if (exists("qaic")) {
   cat("Saved: qaic_values.csv\n")
 }
 
-# 4. Save first-stage model coefficients and vcov matrices
+# Save first-stage model coefficients and vcov matrices
 # These are ymat_pollutant and list_vcov_pollutant
 if (exists("ymat_pollutant") && exists("list_vcov_pollutant")) {
   save(ymat_pollutant, list_vcov_pollutant, file = file.path(results_dir, "first_stage_estimates.RData"))
   cat("Saved: first_stage_estimates.RData\n")
 }
 
-# 5. Save the multivariate meta-analysis results object
+# Save the multivariate meta-analysis results object
 if (exists("mvmeta_results_pollutant")) {
   saveRDS(mvmeta_results_pollutant, file = file.path(results_dir, "mvmeta_results_pollutant.rds"))
   cat("Saved: mvmeta_results_pollutant.rds\n")
 
-  # 5b. Save the summary of the multivariate meta-analysis to a text file
+  # Save the summary of the multivariate meta-analysis to a text file
   capture.output(summary(mvmeta_results_pollutant), file = file.path(results_dir, "mvmeta_summary.txt"))
   cat("Saved: mvmeta_summary.txt\n")
 }
 
-# 6. Save the pooled overall cumulative Relative Risks from meta-analysis
+# Save the pooled overall cumulative Relative Risks from meta-analysis
 if (exists("cpred_pooled_pollutant")) {
   pooled_cumulative_RR <- with(cpred_pooled_pollutant, t(rbind(cumRRfit, cumRRlow, cumRRhigh)))
   colnames(pooled_cumulative_RR) <- c("RR", "Lower", "Upper")
@@ -857,9 +751,9 @@ ggplot(RR_pooled_cum_filter, aes(x = X_label, y = RR)) +
   annotate(geom = "text", x = 1, y = 0.9995, label = "RR = 1", color = "black", size = 4) +
   scale_color_manual(values = c("RR" = "blue", "95% Confidence Interval" = "black")) +
   labs(
-    title = "Relative Risk by Cumulative Lag",
-    x = "Cumulative Lag",
-    y = "Relative Risk (RR)",
+    title = "Cumulative Relative Risk by Lag",
+    x = "Lag",
+    y = "Cumulative Relative Risk (RR)",
     color = "Legend"
   ) +
   theme(
@@ -877,8 +771,73 @@ ggsave(
   dpi = 300,
   bg = "white"
 )
-# Plot pooled estimate together with province-specific estimate
 
-#################################################
+# Plot province specific relative risk of incrase in 10 PM2.5 values as a forest plot
+
+forest_plot_df <- as.data.frame(RR_prov_lag0_pollutant) %>%
+  rownames_to_column(var = "Province") %>%
+  mutate(
+    pooled = FALSE
+  ) %>%
+  select(-Lag)
+
+new_pooled_row <- lagged_RR_pooled_pollutant_df %>%
+  filter(Lag == 0) %>%
+  mutate(
+    RR = round(RR, 4),
+    Lower = round(Lower, 4),
+    Upper = round(Upper, 4),
+    Province = "Pooled",
+    pooled = TRUE
+  ) %>%
+  select(Province, RR, Lower, Upper, pooled)
+
+forest_plot_df <- rbind(forest_plot_df, new_pooled_row)
+rownames(forest_plot_df) <- NULL
+
+forest_plot_province <- forest_plot_df %>%
+  mutate(sort_order = ifelse(pooled, 1, 2)) %>%
+  mutate(across(c(RR, Upper, Lower), as.numeric)) %>%
+  arrange(sort_order, Province) %>%
+  mutate(Province = fct_rev(fct_inorder(Province))) %>%
+  ggplot(aes(
+    x = RR,
+    y = Province,
+    color = pooled
+  )) +
+  geom_errorbarh(
+    aes(
+      xmin = Lower,
+      xmax = Upper,
+    )
+  ) +
+  geom_point(data = . %>% filter(pooled == FALSE), size = 2, shape = 16) +
+  geom_point(data = . %>% filter(pooled == TRUE), size = 3, shape = 18) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "black", linewidth = 0.5, alpha = 0.6) +
+  scale_x_continuous(breaks = scales::breaks_pretty(n = 5)) +
+  labs(
+    title = paste(
+      "Relative Risk per 10 μg/m³ increase of",
+      pollutant_col_name,
+      sep = " "
+    ),
+    x = "Relative Risk (RR) with 95% Confidence Interval",
+    y = "Province"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none"
+  )
+ggsave(
+  file.path(results_dir, paste0("forest_plot_province_", pollutant_col_name, ".png")),
+  plot = forest_plot_province,
+  width = 8,
+  height = 12,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
+################################################
 ##                  END OF SAVING               ##
 ##################################################
