@@ -100,7 +100,7 @@ ggplot(
   ggtitle("Spearman Correlation Matrix") +
   theme(plot.title = element_text(hjust = 0.7))
 ggsave(file.path(results_dir, "correlation_matrix_heatmap.png"), width = 8, height = 6, dpi = 300)
-
+ggsave(file.path(results_dir, "correlation_matrix_heatmap.svg"), width = 8, height = 6, dpi = 300)
 
 # Plot Heatmap to show Pollutant distribution value in each province
 monthly_pol <- dat %>%
@@ -127,6 +127,17 @@ ggsave(
   file.path(
     results_dir,
     paste0("heatmap_monthly_avg_", pollutant_col_name, ".png")
+  ),
+  width = 8,
+  height = 12,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
+ggsave(
+  file.path(
+    results_dir,
+    paste0("heatmap_monthly_avg_", pollutant_col_name, ".svg")
   ),
   width = 8,
   height = 12,
@@ -185,6 +196,15 @@ ggsave(
   bg = "white",
   dpi = 300
 )
+ggsave(
+  file.path(results_dir, "daily_avg_pm25.svg"),
+  width = 12,
+  height = 4,
+  unit = "in",
+  bg = "white",
+  dpi = 300
+)
+
 daily_temp <- ggplot(daily_avg, aes(x = date_start, y = temp_ma7)) +
   geom_line(color = "darkgreen") +
   labs(
@@ -209,6 +229,15 @@ ggsave(
   bg = "white",
   dpi = 300
 )
+ggsave(
+  file.path(results_dir, "daily_avg_temp.svg"),
+  width = 12,
+  height = 4,
+  unit = "in",
+  bg = "white",
+  dpi = 300
+)
+
 daily_hf <- ggplot(daily_avg, aes(x = date_start, y = sum_hf_prim_ma7)) +
   geom_line(color = "red") +
   labs(
@@ -227,6 +256,14 @@ daily_hf <- ggplot(daily_avg, aes(x = date_start, y = sum_hf_prim_ma7)) +
   )
 ggsave(
   file.path(results_dir, "daily_sum_hf_prim.png"),
+  width = 12,
+  height = 4,
+  unit = "in",
+  bg = "white",
+  dpi = 300
+)
+ggsave(
+  file.path(results_dir, "daily_sum_hf_prim.svg"),
   width = 12,
   height = 4,
   unit = "in",
