@@ -1,6 +1,14 @@
 set.seed(123)
 setwd("~/Projects/hf_pm_analysis")
 
+library(xtable)
+library(dplyr)
+library(zoo)
+library(ggplot2)
+library(patchwork)
+library(reshape2)
+library(tidyr)
+
 dat <- read.csv("data/daily_all_weather_30jul.csv")
 
 # properly format date
@@ -19,16 +27,8 @@ invalid_prov <- c("Saraburi", "Samut Sakhon", "Nonthaburi")
 dat <- dat %>%
   filter(!prov_name %in% invalid_prov)
 
-
 # ==============================
 # Plotting all basic demographic data and pollutant data
-
-library(xtable)
-library(dplyr)
-library(zoo)
-library(ggplot2)
-library(patchwork)
-library(reshape2)
 
 # 1. Table 1
 # Select the numeric columns you want to summarize
@@ -290,7 +290,6 @@ plot_data_hf_pm2.5 <- dat %>%
   ) %>%
   drop_na()
 
-
 # Determine the scaling factor for the secondary y-axis.
 # This is used to overlay the two series.
 scaling_factor_hf <- max(plot_data_hf_pm2.5$total_hf) / max(plot_data_hf_pm2.5$average_pm25)
@@ -364,7 +363,6 @@ plot_data_af_pm2.5 <- dat %>%
   ) %>%
   drop_na()
 
-
 # Determine the scaling factor for the secondary y-axis.
 # This is used to overlay the two series.
 scaling_factor_af <- max(plot_data_af_pm2.5$total_af) / max(plot_data_af_pm2.5$average_pm25)
@@ -379,7 +377,7 @@ plot_dual_axis_af_pm <- plot_data_af_pm2.5 %>%
   # Create the secondary y-axis by reversing the scaling transformation
   scale_y_continuous(
     name = "Total Hospitalization Count",
-    sec.axis = sec_axis(~ . * scaling_factor_af, name = "Average PM2.5 (µg/m³)")
+    sec.axis = sec_axis(~ . / scaling_factor_af, name = "Average PM2.5 (µg/m³)")
   ) +
   # Add informative labels and a title
   labs(
@@ -419,6 +417,152 @@ ggsave(
 ggsave(
   filename = file.path(results_dir, "af_pm25_dual_axis_time_series.svg"),
   plot = plot_dual_axis_af_pm,
+  height = 6, width = 12, dpi = 300, units = "in",
+  bg = "white"
+)
+
+# Process the data for plotting
+plot_data_hf_all_pm2.5 <- dat %>%
+  select(date_start, hf, PM2.5) %>%
+  group_by(date_start) %>%
+  summarise(
+    total_hf = sum(hf, na.rm = TRUE),
+    average_pm25 = mean(PM2.5, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    total_hf = rollmean(total_hf, 7, fill = NA, align = "right"),
+    average_pm25 = rollmean(average_pm25, 7, fill = NA, align = "right")
+  ) %>%
+  drop_na()
+
+# Determine the scaling factor for the secondary y-axis.
+# This is used to overlay the two series.
+scaling_factor_hf <- max(plot_data_hf_all_pm2.5$total_hf) / max(plot_data_hf_all_pm2.5$average_pm25)
+
+# Create the dual-axis plot
+plot_dual_axis_hf_all_pm <- plot_data_hf_all_pm2.5 %>%
+  ggplot(aes(x = date_start)) +
+  # Plot the first series: Total Hospitalizations
+  geom_line(aes(y = total_hf, color = "Total Hospitalizations"), size = 0.4) +
+  # Plot the second series: Average PM2.5, scaled to the primary y-axis
+  geom_line(aes(y = average_pm25 * scaling_factor_hf, color = "Average PM2.5"), size = 0.4, alpha = 0.5) +
+  # Create the secondary y-axis by reversing the scaling transformation
+  scale_y_continuous(
+    name = "Total Hospitalization Count",
+    sec.axis = sec_axis(~ . / scaling_factor_hf, name = "Average PM2.5 (µg/m³)")
+  ) +
+  # Add informative labels and a title
+  labs(
+    title = "All Hospitalizations associated with Heart Failure and PM2.5 Levels Over Time",
+    subtitle = "Daily Aggregated Values with 7-day Moving Average",
+    x = "Date",
+    y = "Total Hospitalization Count"
+  ) +
+  # Customize colors and legend title
+  scale_color_manual(
+    name = "Metric",
+    values = c("Total Hospitalizations" = "blue", "Average PM2.5" = "firebrick")
+  ) +
+  scale_x_date(
+    breaks = scales::date_breaks("4 months"),
+    date_labels = "%b %Y"
+  ) +
+  # Apply a clean theme and adjust legend position
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    axis.title.y.left = element_text(color = "blue", face = "bold"),
+    axis.text.y.left = element_text(color = "blue"),
+    axis.title.y.right = element_text(color = "firebrick"),
+    axis.text.y.right = element_text(color = "firebrick"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave(
+  filename = file.path(results_dir, "hf_all_pm25_dual_axis_time_series.png"),
+  plot = plot_dual_axis_hf_all_pm,
+  height = 6, width = 12, dpi = 300, units = "in",
+  bg = "white"
+)
+ggsave(
+  filename = file.path(results_dir, "hf_all_pm25_dual_axis_time_series.svg"),
+  plot = plot_dual_axis_hf_all_pm,
+  height = 6, width = 12, dpi = 300, units = "in",
+  bg = "white"
+)
+
+# Process the data for plotting Atrial Fibrillation
+plot_data_af_all_pm2.5 <- dat %>%
+  select(date_start, af, PM2.5) %>%
+  group_by(date_start) %>%
+  summarise(
+    total_af = sum(af, na.rm = TRUE),
+    average_pm25 = mean(PM2.5, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    total_af = rollmean(total_af, 7, fill = NA, align = "right"),
+    average_pm25 = rollmean(average_pm25, 7, fill = NA, align = "right")
+  ) %>%
+  drop_na()
+
+# Determine the scaling factor for the secondary y-axis.
+# This is used to overlay the two series.
+scaling_factor_af <- max(plot_data_af_all_pm2.5$total_af) / max(plot_data_af_all_pm2.5$average_pm25)
+
+# Create the dual-axis plot
+plot_dual_axis_af_all_pm <- plot_data_af_all_pm2.5 %>%
+  ggplot(aes(x = date_start)) +
+  # Plot the first series: Total Hospitalizations
+  geom_line(aes(y = total_af, color = "Total Hospitalizations"), size = 0.4) +
+  # Plot the second series: Average PM2.5, scaled to the primary y-axis
+  geom_line(aes(y = average_pm25 * scaling_factor_af, color = "Average PM2.5"), size = 0.4, alpha = 0.5) +
+  # Create the secondary y-axis by reversing the scaling transformation
+  scale_y_continuous(
+    name = "Total Hospitalization Count",
+    sec.axis = sec_axis(~ . / scaling_factor_af, name = "Average PM2.5 (µg/m³)")
+  ) +
+  # Add informative labels and a title
+  labs(
+    title = "All Hospitalizations associated with Atrial Fibrillation and PM2.5 Levels Over Time",
+    subtitle = "Daily Aggregated Values with 7-day Moving Average",
+    x = "Date",
+    y = "Total Hospitalization Count"
+  ) +
+  # Customize colors and legend title
+  scale_color_manual(
+    name = "Metric",
+    values = c("Total Hospitalizations" = "blue", "Average PM2.5" = "firebrick")
+  ) +
+  scale_x_date(
+    breaks = scales::date_breaks("4 months"),
+    date_labels = "%b %Y"
+  ) +
+  # Apply a clean theme and adjust legend position
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    axis.title.y.left = element_text(color = "blue", face = "bold"),
+    axis.text.y.left = element_text(color = "blue"),
+    axis.title.y.right = element_text(color = "firebrick"),
+    axis.text.y.right = element_text(color = "firebrick"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave(
+  filename = file.path(results_dir, "af_all_pm25_dual_axis_time_series.png"),
+  plot = plot_dual_axis_af_all_pm,
+  height = 6, width = 12, dpi = 300, units = "in",
+  bg = "white"
+)
+ggsave(
+  filename = file.path(results_dir, "af_all_pm25_dual_axis_time_series.svg"),
+  plot = plot_dual_axis_af_all_pm,
   height = 6, width = 12, dpi = 300, units = "in",
   bg = "white"
 )
