@@ -325,7 +325,7 @@ OUTCOME_VAR <- "hf_prim"
 LAG <- 7
 BASE_OUTPUT_DIR <- "output/regional_subgroup_analysis_30jul"
 # The column name in 'dat_full' used to split the data into subgroups.
-# Ensure this column exists in your dataframe.
+# Ensure this column exists in your dataframe. For now we can analyse "region" and "nhso_region_code"
 SUBGROUPING_COLUMN <- "nhso_region_code"
 
 
@@ -417,6 +417,9 @@ for (i in seq(subgroups)) {
     select(c("Region", "RR", "Lower", "Upper", "pooled"))
   RR_pooled_lagged <- rbind(RR_pooled_lagged, subgroup_rr)
 }
+
+row.names(RR_pooled_lagged) <- NULL # remove row names
+write.csv(RR_pooled_lagged, file.path(BASE_OUTPUT_DIR, paste0("pooled_lagged_RR_", SUBGROUPING_COLUMN, ".csv")), row.names = FALSE)
 
 if (SUBGROUPING_COLUMN == "region") {
   # If the subgroup == region, This if loop is for properly sorting of the region order

@@ -16,7 +16,7 @@ library(xtable)
 
 ## SELECT POLLUTANT OF INTEREST
 pollutant_col_name <- "PM2.5"
-outcome_col_name <- "hf_prim"
+outcome_col_name <- "hf_prim_over65"
 
 lag_number <- 7
 output_dir <- "30jul"
@@ -52,7 +52,6 @@ if (outcome_col_name == "hf_prim") {
 } else {
   outcome_plot_name <- outcome_col_name
 }
-
 
 cat("\nSaving results to directory:", file.path(getwd(), results_dir), "\n")
 
@@ -994,6 +993,8 @@ ggsave(
   dpi = 300,
   bg = "white"
 )
+
+write.csv(forest_plot_df, file.path(results_dir, paste0("forest_plot_province_", pollutant_col_name, ".csv")), row.names = FALSE)
 ################################################
 ##                  END OF SAVING               ##
 ##################################################

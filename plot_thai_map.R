@@ -73,6 +73,16 @@ ggsave(
   height = 8, width = 10, dpi = 300, units = "in",
   bg = "white"
 )
+
+# Save the aggregated data to csv
+thailand_map_with_hf_save <- thailand_map_with_hf %>%
+  select(NAME_1, VARNAME_1, NL_NAME_1, hf_count)
+
+write.csv(thailand_map_with_hf_save,
+  file = file.path(results_dir, "thai_map_hf.csv"),
+  row.names = FALSE
+)
+
 # =============================================
 # Create average map of PM2.5 by provinces
 avg_prov_poll <- dat %>%
@@ -115,4 +125,14 @@ ggsave(
   filename = file.path(results_dir, "thai_map_pm25.svg"),
   height = 8, width = 10, dpi = 300, units = "in",
   bg = "white"
+)
+
+# Save the aggregated data to csv
+thailand_map_with_pm25_save <- thailand_map_with_pm25 %>%
+  select(NAME_1, VARNAME_1, NL_NAME_1, average_pm25) %>%
+  select(-geometry)
+
+write.csv(thailand_map_with_pm25_save,
+  file = file.path(results_dir, "thai_map_pm25.csv"),
+  row.names = FALSE
 )

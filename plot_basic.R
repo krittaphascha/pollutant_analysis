@@ -108,6 +108,8 @@ monthly_pol <- dat %>%
   summarise(across(c("O3", "PM2.5", "PM10", "NO2", "NOX", "CO", "SO2"), mean, na.rm = TRUE), .groups = "drop") %>%
   mutate(month = factor(month, levels = month.name))
 
+write.csv(monthly_pol, file.path(results_dir, "monthly_pollutant_means.csv"), row.names = FALSE)
+
 ggplot(monthly_pol, aes(x = month, y = prov_name, fill = PM2.5)) +
   geom_tile(color = "white") + # geom_tile is the function for heatmaps
   scale_fill_viridis_c(name = "Monthly Avg. PM2.5 (μg/m³)") +
@@ -171,6 +173,8 @@ daily_avg <- dat %>%
       fill = NA, align = "right"
     )
   )
+
+write.csv(daily_avg, file.path(results_dir, "daily_avg_weather.csv"), row.names = FALSE)
 
 daily_pm25 <- ggplot(daily_avg, aes(x = date_start, y = pm25_ma7)) +
   geom_line(color = "blue") +
@@ -290,6 +294,8 @@ plot_data_hf_pm2.5 <- dat %>%
   ) %>%
   drop_na()
 
+write.csv(plot_data_hf_pm2.5, file.path(results_dir, "hf_pm25_daily_aggregated.csv"), row.names = FALSE)
+
 # Determine the scaling factor for the secondary y-axis.
 # This is used to overlay the two series.
 scaling_factor_hf <- max(plot_data_hf_pm2.5$total_hf) / max(plot_data_hf_pm2.5$average_pm25)
@@ -363,6 +369,7 @@ plot_data_af_pm2.5 <- dat %>%
   ) %>%
   drop_na()
 
+write.csv(plot_data_af_pm2.5, file.path(results_dir, "af_pm25_daily_aggregated.csv"), row.names = FALSE)
 # Determine the scaling factor for the secondary y-axis.
 # This is used to overlay the two series.
 scaling_factor_af <- max(plot_data_af_pm2.5$total_af) / max(plot_data_af_pm2.5$average_pm25)
@@ -436,6 +443,8 @@ plot_data_hf_all_pm2.5 <- dat %>%
   ) %>%
   drop_na()
 
+write.csv(plot_data_hf_all_pm2.5, file.path(results_dir, "hf_all_pm25_daily_aggregated.csv"), row.names = FALSE)
+
 # Determine the scaling factor for the secondary y-axis.
 # This is used to overlay the two series.
 scaling_factor_hf <- max(plot_data_hf_all_pm2.5$total_hf) / max(plot_data_hf_all_pm2.5$average_pm25)
@@ -508,6 +517,8 @@ plot_data_af_all_pm2.5 <- dat %>%
     average_pm25 = rollmean(average_pm25, 7, fill = NA, align = "right")
   ) %>%
   drop_na()
+
+write.csv(plot_data_af_all_pm2.5, file.path(results_dir, "af_all_pm25_daily_aggregated.csv"), row.names = FALSE)
 
 # Determine the scaling factor for the secondary y-axis.
 # This is used to overlay the two series.
